@@ -1,0 +1,268 @@
+openapi: 3.0.3
+info:
+  title: SecureApp API
+  description: |
+    API REST del sistema de gestión segura - UTN ISW-1013
+    Autenticación via JWT almacenado en cookie HttpOnly.
+  version: 1.0.0
+
+servers:
+  - url: /api
+    description: Servidor local
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: token
+
+  schemas:
+    Product:
+      type: object
+      properties:
+        id:          { type: integer }
+        code:        { type: string, example: PROD-001 }
+        name:        { type: string, example: Laptop Dell XPS }
+        description: { type: string }
+        quantity:    { type: integer, example: 10 }
+        price:       { type: number, format: float, example: 999.99 }
+        createdAt:   { type: string, format: date-time }
+
+    User:
+      type: object
+      properties:
+        id:          { type: integer }
+        username:    { type: string }
+        email:       { type: string }
+        rol:         { type: string, enum: [SUPERADMIN, AUDITOR, REGISTRADOR] }
+        isActive:    { type: boolean }
+        lastLoginAt: { type: string, format: date-time }
+        lastLoginIp: { type: string }
+
+    AuditLog:
+      type: object
+      properties:
+        id:        { type: integer }
+        event:     { type: string }
+        ipAddress: { type: string }
+        detail:    { type: string }
+        createdAt: { type: string, format: date-time }
+        user:
+          type: object
+          properties:
+            username: { type: string }
+
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+
+security:
+  - cookieAuth: []
+
+paths:
+  /auth/login:
+    post:
+      tags: [Autenticación]
+      summary: Iniciar sesión
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string, example: superadmin }
+                password: { type: string, example: Admin@2026! }
+      responses:
+        '200':
+          description: Login exitoso. Token enviado en cookie HttpOnly.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  user:
+                    type: object
+                    properties:
+                      id: { type: integer }
+                      username: { type: string }
+                      rol: { type: string }
+        '401': { description: Credenciales inválidas }
+        '429': { description: IP bloqueada por demasiados intentos }
+
+  /auth/logout:
+    post:
+      tags: [Autenticación]
+      summary: Cerrar sesión
+      responses:
+        '200': { description: Sesión cerrada }
+
+  /auth/me:
+    get:
+      tags: [Autenticación]
+      summary: Obtener usuario autenticado actual
+      responses:
+        '200':
+          description: Datos del usuario actual
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+
+  /products:
+    get:
+      tags: [Productos]
+      summary: Listar todos los productos
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Product' }
+    post:
+      tags: [Productos]
+      summary: Crear producto (SUPERADMIN, REGISTRADOR)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, name, description, quantity, price]
+              properties:
+                code:        { type: string, example: PROD-010 }
+                name:        { type: string }
+                description: { type: string }
+                quantity:    { type: integer }
+                price:       { type: number }
+      responses:
+        '201': { description: Producto creado }
+        '400': { description: Datos inválidos }
+        '403': { description: Sin permisos }
+
+  /products/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [Productos]
+      summary: Obtener producto por ID
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+    put:
+      tags: [Productos]
+      summary: Actualizar producto (SUPERADMIN, REGISTRADOR)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:        { type: string }
+                description: { type: string }
+                quantity:    { type: integer }
+                price:       { type: number }
+      responses:
+        '200': { description: Producto actualizado }
+        '403': { description: Sin permisos }
+    delete:
+      tags: [Productos]
+      summary: Eliminar producto (SUPERADMIN, REGISTRADOR)
+      responses:
+        '200': { description: Producto eliminado }
+        '403': { description: Sin permisos }
+
+  /users:
+    get:
+      tags: [Usuarios]
+      summary: Listar usuarios (todos los roles)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/User' }
+    post:
+      tags: [Usuarios]
+      summary: Crear usuario (solo SUPERADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, email, password, rol]
+              properties:
+                username: { type: string }
+                email:    { type: string }
+                password: { type: string, minLength: 8 }
+                rol:      { type: string, enum: [SUPERADMIN, AUDITOR, REGISTRADOR] }
+      responses:
+        '201': { description: Usuario creado }
+        '403': { description: Sin permisos }
+
+  /users/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [Usuarios]
+      summary: Obtener usuario por ID (solo SUPERADMIN)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+    put:
+      tags: [Usuarios]
+      summary: Actualizar usuario (solo SUPERADMIN)
+      responses:
+        '200': { description: Usuario actualizado }
+    delete:
+      tags: [Usuarios]
+      summary: Desactivar usuario (solo SUPERADMIN)
+      responses:
+        '200': { description: Usuario desactivado }
+
+  /audit:
+    get:
+      tags: [Auditoría]
+      summary: Obtener logs de auditoría (solo SUPERADMIN)
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 30 }
+        - name: event
+          in: query
+          schema: { type: string, example: LOGIN_FAILED }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  logs:
+                    type: array
+                    items: { $ref: '#/components/schemas/AuditLog' }
+                  total:      { type: integer }
+                  page:       { type: integer }
+                  totalPages: { type: integer }
+        '403': { description: Solo accesible para SuperAdmin }
