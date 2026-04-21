@@ -1,0 +1,81 @@
+// Prisma Schema - Base de datos completa del proyecto
+// Generador y conexión
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ROLES ────────────────────────────────────────────────────────────────────
+enum RoleName {
+  SUPERADMIN
+  AUDITOR
+  REGISTRADOR
+}
+
+// ─── USUARIOS ─────────────────────────────────────────────────────────────────
+model User {
+  id            Int       @id @default(autoincrement())
+  username      String    @unique @db.VarChar(50)
+  email         String    @unique @db.VarChar(100)
+  passwordHash  String    @db.VarChar(255)
+  rol           RoleName  @default(REGISTRADOR)
+  isActive      Boolean   @default(true)
+  lastLoginAt   DateTime?
+  lastLoginIp   String?   @db.VarChar(45)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relaciones
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+// ─── PRODUCTOS ────────────────────────────────────────────────────────────────
+model Product {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique @db.VarChar(20)
+  name        String   @db.VarChar(100)
+  description String   @db.Text
+  quantity    Int
+  price       Decimal  @db.Decimal(10, 2)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("products")
+}
+
+// ─── LOG DE AUDITORÍA ─────────────────────────────────────────────────────────
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
+  event     String   @db.VarChar(100)   // LOGIN_SUCCESS, LOGIN_FAILED, PRODUCT_CREATED, etc.
+  entity    String?  @db.VarChar(50)    // users, products, roles
+  entityId  Int?                         // ID del recurso afectado
+  detail    String?  @db.Text           // Detalle adicional en JSON
+  ipAddress String   @db.VarChar(45)
+  userAgent String?  @db.VarChar(500)
+  createdAt DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
+// ─── INTENTOS FALLIDOS DE LOGIN (para rate limiting persistente) ──────────────
+model LoginAttempt {
+  id          Int      @id @default(autoincrement())
+  identifier  String   @db.VarChar(100)  // IP o username
+  attempts    Int      @default(1)
+  blockedUntil DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([identifier])
+  @@map("login_attempts")
+}
