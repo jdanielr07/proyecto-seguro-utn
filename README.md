@@ -31,13 +31,14 @@ Aplicación web segura construida con Node.js + Express + PostgreSQL + Prisma.
 
 ### Requisitos
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado y **corriendo** (buscá la ballena 🐳 en la barra de tareas)
+- Node.js instalado — en Mac: `brew install node`
 - Puerto **8080** libre
 
 ### 1. Clonar el repositorio
 
 ```bash
-git clone <URL_DEL_REPO>
-cd proyecto-seguro
+git clone https://github.com/jdanielr07/proyecto-seguro-utn.git
+cd proyecto-seguro-utn
 ```
 
 ### 2. Construir y levantar los contenedores
@@ -104,6 +105,29 @@ Deberías ver:
 | Aplicación web | http://localhost:8080 |
 | API Docs (Swagger) | http://localhost:8080/api/docs |
 | URL pública ngrok | *(actualizar aquí cuando esté activo)* |
+
+---
+
+## 🗄️ Ver la base de datos visualmente (Prisma Studio)
+
+Primero asegurate de tener el puerto 5432 expuesto en `docker-compose.yml` (sección `db:`):
+
+```yaml
+ports:
+  - "5432:5432"
+```
+
+Luego con Docker corriendo, ejecutá desde la carpeta `backend`:
+
+```bash
+cd backend
+npm install
+DATABASE_URL='postgresql://appuser:S3gur0_P4ssw0rd_2026!@localhost:5432/seguridad_db' npx prisma studio
+```
+
+⚠️ **Importante:** usá comillas simples `'` en la URL, no dobles, para evitar errores en zsh.
+
+Se abre automáticamente en **http://localhost:5555**
 
 ---
 
