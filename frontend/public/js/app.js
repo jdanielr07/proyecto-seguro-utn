@@ -1,21 +1,15 @@
-/**
- * app.js - Lógica principal del frontend
- * RS-02: NUNCA usar innerHTML con datos del usuario sin escapeHtml()
- */
+'use strict';
 
 window.APP = (() => {
   let currentUser = null;
   let confirmCallback = null;
   let auditPage = 1;
 
-  // ── Helpers DOM ────────────────────────────────────────────────────────────
   const $ = id => document.getElementById(id);
-  const esc = API.escapeHtml;
 
   function showToast(msg, type = 'success') {
     const t = $('toast');
     t.className = `toast toast-${type}`;
-    // RS-02: usar textContent, no innerHTML
     t.textContent = msg;
     t.classList.remove('hidden');
     setTimeout(() => t.classList.add('hidden'), 3000);
@@ -33,19 +27,17 @@ window.APP = (() => {
   function showApiError(boxId, err) {
     const box = $(boxId);
     if (!box) return;
-    // RS-02: textContent para mensajes de error del servidor
     box.textContent = err.message || 'Error desconocido.';
     box.classList.remove('hidden');
   }
 
   function rolBadge(rol) {
     const map = {
-      SUPERADMIN:   ['badge-superadmin', '⚡ SuperAdmin'],
-      AUDITOR:      ['badge-auditor',    '👁 Auditor'],
-      REGISTRADOR:  ['badge-registrador','📝 Registrador'],
+      SUPERADMIN:  ['badge-superadmin', '⚡ SuperAdmin'],
+      AUDITOR:     ['badge-auditor',    '👁 Auditor'],
+      REGISTRADOR: ['badge-registrador','📝 Registrador'],
     };
     const [cls, label] = map[rol] || ['', rol];
-    // Construimos el badge de forma segura
     const span = document.createElement('span');
     span.className = `badge ${cls}`;
     span.textContent = label;
@@ -57,7 +49,6 @@ window.APP = (() => {
     return new Date(dt).toLocaleString('es-CR');
   }
 
-  // ── Validación frontend (RF-03, RF-04) ────────────────────────────────────
   function validateProductForm() {
     let valid = true;
     const fields = {
@@ -98,110 +89,81 @@ window.APP = (() => {
     return valid;
   }
 
-  // ── Login ─────────────────────────────────────────────────────────────────
-  function showLogin() {
-    currentUser = null;
-    $('login-screen').classList.add('active');
-    $('app-screen').classList.remove('active');
-    $('login-form').reset();
-  }
-
   async function initApp() {
     try {
       currentUser = await API.auth.me();
-      if (!currentUser) { showLogin(); return; }
+      if (!currentUser) return;
       renderApp();
     } catch {
-      showLogin();
+      window.location.href = '/';
     }
   }
 
-  $('login-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    clearFormErrors('login-form');
-    const btn = $('login-btn');
-    btn.disabled = true;
-    btn.textContent = 'Ingresando...';
+  function navigateTo(page) {
+    document.querySelectorAll('.nav-item').forEach(l => l.classList.remove('active'));
+    const link = document.querySelector(`.nav-item[data-page="${page}"]`);
+    if (link) link.classList.add('active');
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    $(`page-${page}`).classList.add('active');
+    $('page-title').textContent = link ? link.textContent.trim() : page;
+    if (page === 'dashboard') loadDashboard();
+    if (page === 'products')  loadProducts();
+    if (page === 'users')     loadUsers();
+    if (page === 'audit')     loadAudit();
+  }
 
-    try {
-      const res = await API.auth.login($('username').value, $('password').value);
-      if (res) {
-        // Reload completo: garantiza DOM limpio sin estado del usuario anterior.
-        window.location.reload();
-      }
-    } catch (err) {
-      showApiError('login-error', err);
-      btn.disabled = false;
-      btn.textContent = 'Iniciar Sesión';
-    }
+  document.querySelector('.sidebar-nav').addEventListener('click', e => {
+    const link = e.target.closest('.nav-item');
+    if (!link) return;
+    e.preventDefault();
+    navigateTo(link.dataset.page);
   });
 
-  // ── Render App ────────────────────────────────────────────────────────────
   function renderApp() {
-    $('login-screen').classList.remove('active');
     $('app-screen').classList.add('active');
 
-    // RS-02: usar textContent, no innerHTML
     $('user-info-sidebar').textContent = `${currentUser.username} · ${currentUser.rol}`;
     $('user-badge').textContent = currentUser.rol;
     $('user-badge').className = `badge badge-${currentUser.rol.toLowerCase()}`;
 
-    // Mostrar/ocultar nav según rol (RF-05)
-    // IMPORTANTE: esto es solo UX, la seguridad real está en el backend
-    const isAdmin   = currentUser.rol === 'SUPERADMIN';
-    const canWrite  = ['SUPERADMIN', 'REGISTRADOR'].includes(currentUser.rol);
-    $('nav-users').style.display = '';
-    $('nav-audit').style.display = isAdmin ? '' : 'none';
-    $('btn-new-user')    && ($('btn-new-user').style.display    = isAdmin  ? '' : 'none');
-    $('btn-new-product') && ($('btn-new-product').style.display = canWrite ? '' : 'none');
+    const isAdmin  = currentUser.rol === 'SUPERADMIN';
+    const canWrite = ['SUPERADMIN', 'REGISTRADOR'].includes(currentUser.rol);
 
-    // Limpiar todo el contenido dinámico de la sesión anterior para que
-    // el nuevo usuario nunca vea filas, stats ni logs de otro usuario.
-    $('products-tbody').innerHTML     = '';
-    $('users-tbody').innerHTML        = '';
-    $('audit-tbody').innerHTML        = '';
-    $('audit-pagination').innerHTML   = '';
-    $('recent-logs-table').innerHTML  = '';
-    $('stat-products').textContent    = '–';
-    $('stat-users').textContent       = '–';
-    $('stat-logs').textContent        = '–';
+    if (isAdmin && !document.querySelector('.nav-item[data-page="audit"]')) {
+      const a = document.createElement('a');
+      a.href = '#';
+      a.className = 'nav-item';
+      a.dataset.page = 'audit';
+      a.innerHTML = '<span class="nav-icon">📋</span> Auditoría';
+      document.querySelector('.sidebar-nav').appendChild(a);
+    }
 
-    // Resetear siempre al dashboard al iniciar sesión
-    document.querySelectorAll('.nav-item').forEach(l => l.classList.remove('active'));
-    const dashNav = document.querySelector('.nav-item[data-page="dashboard"]');
-    if (dashNav) dashNav.classList.add('active');
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    $('page-dashboard').classList.add('active');
-    $('page-title').textContent = dashNav ? dashNav.textContent.trim() : 'Dashboard';
+    if (canWrite && !$('btn-new-product')) {
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-primary';
+      btn.id = 'btn-new-product';
+      btn.textContent = '+ Nuevo Producto';
+      btn.addEventListener('click', openNewProduct);
+      $('products-toolbar').appendChild(btn);
+    }
+
+    if (isAdmin && !$('btn-new-user')) {
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-primary';
+      btn.id = 'btn-new-user';
+      btn.textContent = '+ Nuevo Usuario';
+      btn.addEventListener('click', openNewUser);
+      $('users-toolbar').appendChild(btn);
+    }
 
     loadDashboard();
   }
 
-  // ── Navegación ────────────────────────────────────────────────────────────
-  document.querySelectorAll('.nav-item').forEach(link => {
-    link.addEventListener('click', e => {
-      e.preventDefault();
-      const page = link.dataset.page;
-      document.querySelectorAll('.nav-item').forEach(l => l.classList.remove('active'));
-      link.classList.add('active');
-      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      $(`page-${page}`).classList.add('active');
-      $('page-title').textContent = link.textContent.trim();
-
-      if (page === 'dashboard') loadDashboard();
-      if (page === 'products')  loadProducts();
-      if (page === 'users')     loadUsers();
-      if (page === 'audit')     loadAudit();
-    });
-  });
-
-  // ── Logout ────────────────────────────────────────────────────────────────
   $('logout-btn').addEventListener('click', async () => {
     await API.auth.logout();
-    showLogin();
+    window.location.href = '/';
   });
 
-  // ── Dashboard ─────────────────────────────────────────────────────────────
   async function loadDashboard() {
     try {
       const [products, users] = await Promise.all([
@@ -226,21 +188,16 @@ window.APP = (() => {
     const tbody = $('recent-logs-table');
     if (!logs.length) { tbody.textContent = 'Sin eventos recientes.'; return; }
 
-    // RS-02: construir tabla sin innerHTML con datos de usuario
     const table = document.createElement('table');
     table.className = 'data-table';
     table.innerHTML = `<thead><tr><th>Evento</th><th>Usuario</th><th>IP</th><th>Fecha</th></tr></thead>`;
     const tb = document.createElement('tbody');
     logs.forEach(log => {
       const tr = document.createElement('tr');
-      const tdEvent = document.createElement('td');
-      tdEvent.textContent = log.event;
-      const tdUser = document.createElement('td');
-      tdUser.textContent = log.user?.username || '–';
-      const tdIp = document.createElement('td');
-      tdIp.textContent = log.ipAddress;
-      const tdDate = document.createElement('td');
-      tdDate.textContent = formatDate(log.createdAt);
+      const tdEvent = document.createElement('td'); tdEvent.textContent = log.event;
+      const tdUser  = document.createElement('td'); tdUser.textContent  = log.user?.username || '–';
+      const tdIp    = document.createElement('td'); tdIp.textContent    = log.ipAddress;
+      const tdDate  = document.createElement('td'); tdDate.textContent  = formatDate(log.createdAt);
       tr.append(tdEvent, tdUser, tdIp, tdDate);
       tb.appendChild(tr);
     });
@@ -249,7 +206,6 @@ window.APP = (() => {
     tbody.appendChild(table);
   }
 
-  // ── Productos ─────────────────────────────────────────────────────────────
   async function loadProducts() {
     try {
       const products = await API.products.getAll();
@@ -257,7 +213,6 @@ window.APP = (() => {
       tbody.innerHTML = '';
 
       const canWrite = ['SUPERADMIN', 'REGISTRADOR'].includes(currentUser.rol);
-      if ($('btn-new-product')) $('btn-new-product').style.display = canWrite ? '' : 'none';
 
       if (!products?.length) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Sin productos</td></tr>';
@@ -266,12 +221,9 @@ window.APP = (() => {
 
       products.forEach(p => {
         const tr = document.createElement('tr');
-        // RS-02: textContent para todos los datos del servidor
-        const cells = [
-          p.code, p.name, p.description,
-          p.quantity, `₡${parseFloat(p.price).toLocaleString('es-CR', {minimumFractionDigits:2})}`
-        ];
-        cells.forEach(val => {
+        [p.code, p.name, p.description, p.quantity,
+          `₡${parseFloat(p.price).toLocaleString('es-CR', {minimumFractionDigits:2})}`
+        ].forEach(val => {
           const td = document.createElement('td');
           td.textContent = val;
           tr.appendChild(td);
@@ -313,9 +265,9 @@ window.APP = (() => {
 
   function openEditProduct(p) {
     $('modal-product-title').textContent = 'Editar Producto';
-    $('product-id').value   = p.id;
+    $('product-id').value    = p.id;
     $('p-code').value        = p.code;
-    $('p-code').disabled     = true;  // código no se puede cambiar
+    $('p-code').disabled     = true;
     $('p-name').value        = p.name;
     $('p-description').value = p.description;
     $('p-quantity').value    = p.quantity;
@@ -323,8 +275,6 @@ window.APP = (() => {
     clearFormErrors('product-form');
     showModal('modal-product');
   }
-
-  $('btn-new-product')?.addEventListener('click', openNewProduct);
 
   $('product-form').addEventListener('submit', async e => {
     e.preventDefault();
@@ -364,7 +314,6 @@ window.APP = (() => {
     }
   }
 
-  // ── Usuarios ──────────────────────────────────────────────────────────────
   async function loadUsers() {
     try {
       const users = await API.users.getAll();
@@ -372,7 +321,6 @@ window.APP = (() => {
       tbody.innerHTML = '';
 
       const isAdmin = currentUser.rol === 'SUPERADMIN';
-      if ($('btn-new-user')) $('btn-new-user').style.display = isAdmin ? '' : 'none';
 
       if (!users?.length) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted)">Sin usuarios</td></tr>';
@@ -382,20 +330,11 @@ window.APP = (() => {
       users.forEach(u => {
         const tr = document.createElement('tr');
 
-        const tdUser = document.createElement('td');
-        tdUser.textContent = u.username;
-
-        const tdEmail = document.createElement('td');
-        tdEmail.textContent = u.email;
-
-        const tdRol = document.createElement('td');
-        tdRol.innerHTML = rolBadge(u.rol);
-
-        const tdLogin = document.createElement('td');
-        tdLogin.textContent = formatDate(u.lastLoginAt);
-
-        const tdIp = document.createElement('td');
-        tdIp.textContent = u.lastLoginIp || '–';
+        const tdUser   = document.createElement('td'); tdUser.textContent  = u.username;
+        const tdEmail  = document.createElement('td'); tdEmail.textContent = u.email;
+        const tdRol    = document.createElement('td'); tdRol.innerHTML     = rolBadge(u.rol);
+        const tdLogin  = document.createElement('td'); tdLogin.textContent = formatDate(u.lastLoginAt);
+        const tdIp     = document.createElement('td'); tdIp.textContent    = u.lastLoginIp || '–';
 
         const tdStatus = document.createElement('td');
         const statusSpan = document.createElement('span');
@@ -441,18 +380,16 @@ window.APP = (() => {
 
   function openEditUser(u) {
     $('modal-user-title').textContent = 'Editar Usuario';
-    $('user-id').value    = u.id;
-    $('u-username').value = u.username;
+    $('user-id').value       = u.id;
+    $('u-username').value    = u.username;
     $('u-username').disabled = true;
-    $('u-email').value    = u.email;
-    $('u-password').value = '';
-    $('u-rol').value      = u.rol;
+    $('u-email').value       = u.email;
+    $('u-password').value    = '';
+    $('u-rol').value         = u.rol;
     $('pass-hint').textContent = '(dejar vacío para no cambiar)';
     clearFormErrors('user-form');
     showModal('modal-user');
   }
-
-  $('btn-new-user')?.addEventListener('click', openNewUser);
 
   $('user-form').addEventListener('submit', async e => {
     e.preventDefault();
@@ -492,7 +429,6 @@ window.APP = (() => {
     }
   }
 
-  // ── Auditoría ─────────────────────────────────────────────────────────────
   async function loadAudit(page = 1) {
     auditPage = page;
     const event = $('audit-filter').value;
@@ -508,13 +444,11 @@ window.APP = (() => {
 
       data.logs.forEach(log => {
         const tr = document.createElement('tr');
-
         const tdDate   = document.createElement('td'); tdDate.textContent   = formatDate(log.createdAt);
         const tdEvent  = document.createElement('td'); tdEvent.textContent  = log.event;
         const tdUser   = document.createElement('td'); tdUser.textContent   = log.user?.username || '–';
         const tdIp     = document.createElement('td'); tdIp.textContent     = log.ipAddress;
         const tdDetail = document.createElement('td'); tdDetail.textContent = log.detail ? JSON.stringify(JSON.parse(log.detail)).substring(0, 80) : '–';
-
         tr.append(tdDate, tdEvent, tdUser, tdIp, tdDetail);
         tbody.appendChild(tr);
       });
@@ -539,10 +473,8 @@ window.APP = (() => {
 
   $('audit-filter').addEventListener('change', () => loadAudit(1));
 
-  // ── Confirmar eliminación ─────────────────────────────────────────────────
   function confirmDelete(type, callback) {
-    const msg = $('confirm-message');
-    msg.textContent = `¿Estás seguro que querés eliminar este ${type}? Esta acción no se puede deshacer.`;
+    $('confirm-message').textContent = `¿Estás seguro que querés eliminar este ${type}? Esta acción no se puede deshacer.`;
     confirmCallback = callback;
     showModal('modal-confirm');
   }
@@ -552,7 +484,6 @@ window.APP = (() => {
     if (confirmCallback) { confirmCallback(); confirmCallback = null; }
   });
 
-  // ── Cerrar modales ────────────────────────────────────────────────────────
   document.querySelectorAll('.modal-close, [data-modal]').forEach(btn => {
     btn.addEventListener('click', () => {
       const modalId = btn.dataset.modal;
@@ -566,8 +497,7 @@ window.APP = (() => {
     });
   });
 
-  // ── Init ──────────────────────────────────────────────────────────────────
   initApp();
 
-  return { showLogin };
+  return {};
 })();

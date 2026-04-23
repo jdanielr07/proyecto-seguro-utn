@@ -8,7 +8,6 @@ const { getAll, getById, create, update, remove } = require('../controllers/prod
 const { requireAuth, requireRole } = require('../middleware/auth.middleware');
 const { validateRequest } = require('../validators/validate');
 
-// Validaciones compartidas para crear/editar
 const productValidation = [
   body('name')
     .trim()
@@ -35,14 +34,11 @@ const createValidation = [
   ...productValidation,
 ];
 
-// Todos los endpoints requieren autenticación
 router.use(requireAuth);
 
-// Lectura: cualquier rol autenticado puede ver productos
 router.get('/',    getAll);
 router.get('/:id', getById);
 
-// Escritura: solo SUPERADMIN y REGISTRADOR (RF-05)
 router.post('/',    requireRole('SUPERADMIN', 'REGISTRADOR'), createValidation, validateRequest, create);
 router.put('/:id',  requireRole('SUPERADMIN', 'REGISTRADOR'), productValidation, validateRequest, update);
 router.delete('/:id', requireRole('SUPERADMIN', 'REGISTRADOR'), remove);

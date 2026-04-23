@@ -5,10 +5,6 @@ const { logAuditEvent, getClientIp } = require('../middleware/audit.middleware')
 
 const prisma = new PrismaClient();
 
-/**
- * GET /api/products
- * Acceso: SUPERADMIN, AUDITOR, REGISTRADOR
- */
 async function getAll(req, res) {
   try {
     const products = await prisma.product.findMany({
@@ -21,9 +17,6 @@ async function getAll(req, res) {
   }
 }
 
-/**
- * GET /api/products/:id
- */
 async function getById(req, res) {
   try {
     const id = parseInt(req.params.id, 10);
@@ -40,10 +33,6 @@ async function getById(req, res) {
   }
 }
 
-/**
- * POST /api/products
- * Acceso: SUPERADMIN, REGISTRADOR
- */
 async function create(req, res) {
   try {
     const { code, name, description, quantity, price } = req.body;
@@ -77,10 +66,6 @@ async function create(req, res) {
   }
 }
 
-/**
- * PUT /api/products/:id
- * Acceso: SUPERADMIN, REGISTRADOR
- */
 async function update(req, res) {
   try {
     const id = parseInt(req.params.id, 10);
@@ -117,11 +102,6 @@ async function update(req, res) {
   }
 }
 
-/**
- * DELETE /api/products/:id
- * Soft delete (isActive = false)
- * Acceso: SUPERADMIN, REGISTRADOR
- */
 async function remove(req, res) {
   try {
     const id = parseInt(req.params.id, 10);

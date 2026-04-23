@@ -102,7 +102,7 @@ Deberías ver:
 |---------|-----|
 | Aplicación web | http://localhost:8080 |
 | API Docs (Swagger) | http://localhost:8080/api/docs |
-| URL pública ngrok | *(actualizar aquí cuando esté activo)* |
+| URL pública ngrok | https://bf44-190-211-113-9.ngrok-free.app/ |
 
 ---
 
@@ -142,7 +142,6 @@ ngrok http 8080
 # 4. Copiar la URL que aparece (ej: https://abc123.ngrok-free.app)
 # 5. Actualizar la URL en este README y notificar al equipo Red Team
 ```
-
 ---
 
 ## Comandos útiles

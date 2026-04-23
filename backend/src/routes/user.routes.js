@@ -33,10 +33,8 @@ const userUpdateValidation = [
 
 router.use(requireAuth);
 
-// Lectura: cualquier rol autenticado (RF-05)
 router.get('/', getAll);
 
-// Acciones solo para SUPERADMIN (RF-05)
 router.get('/:id',    requireRole('SUPERADMIN'), getById);
 router.post('/',      requireRole('SUPERADMIN'), userCreateValidation, validateRequest, create);
 router.put('/:id',    requireRole('SUPERADMIN'), userUpdateValidation, validateRequest, update);

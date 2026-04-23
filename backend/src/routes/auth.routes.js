@@ -9,7 +9,6 @@ const { login, logout, me } = require('../controllers/auth.controller');
 const { requireAuth } = require('../middleware/auth.middleware');
 const { validateRequest } = require('../validators/validate');
 
-// Rate limiting en login (RS-07): 5 intentos en 5 minutos
 const loginLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
   max: 5,
@@ -19,7 +18,6 @@ const loginLimiter = rateLimit({
   skipSuccessfulRequests: true,
 });
 
-// Validaciones del login
 const loginValidation = [
   body('username')
     .trim()

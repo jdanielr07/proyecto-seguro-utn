@@ -7,10 +7,6 @@ const { logAuditEvent, getClientIp } = require('../middleware/audit.middleware')
 const prisma = new PrismaClient();
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || '12', 10);
 
-/**
- * GET /api/users
- * Acceso: SUPERADMIN, AUDITOR, REGISTRADOR (solo lectura)
- */
 async function getAll(req, res) {
   try {
     const users = await prisma.user.findMany({
@@ -23,7 +19,6 @@ async function getAll(req, res) {
         lastLoginAt: true,
         lastLoginIp: true,
         createdAt: true,
-        // passwordHash NO se incluye nunca en responses
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -33,10 +28,6 @@ async function getAll(req, res) {
   }
 }
 
-/**
- * GET /api/users/:id
- * Acceso: SUPERADMIN
- */
 async function getById(req, res) {
   try {
     const id = parseInt(req.params.id, 10);
@@ -58,16 +49,10 @@ async function getById(req, res) {
   }
 }
 
-/**
- * POST /api/users
- * Acceso: SUPERADMIN
- * RF-02: Hash con bcrypt factor ≥ 12
- */
 async function create(req, res) {
   try {
     const { username, email, password, rol } = req.body;
 
-    // RF-02: Hash seguro con bcrypt (factor de costo ≥ 12)
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
     const user = await prisma.user.create({
@@ -94,10 +79,6 @@ async function create(req, res) {
   }
 }
 
-/**
- * PUT /api/users/:id
- * Acceso: SUPERADMIN
- */
 async function update(req, res) {
   try {
     const id = parseInt(req.params.id, 10);
@@ -114,7 +95,6 @@ async function update(req, res) {
       isActive,
     };
 
-    // Solo actualizar contraseña si se provee una nueva
     if (password) {
       updateData.passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
     }
@@ -125,7 +105,6 @@ async function update(req, res) {
       select: { id: true, username: true, email: true, rol: true, isActive: true },
     });
 
-    // RF-06: Registrar cambio de rol si cambió
     const eventType = rol && rol !== existing.rol ? 'ROLE_CHANGED' : 'USER_UPDATED';
     await logAuditEvent({
       userId: req.user.id,
@@ -143,17 +122,11 @@ async function update(req, res) {
   }
 }
 
-/**
- * DELETE /api/users/:id
- * Soft delete (isActive = false)
- * Acceso: SUPERADMIN
- */
 async function remove(req, res) {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: 'ID inválido.' });
 
-    // No permitir que un admin se elimine a sí mismo
     if (id === req.user.id) {
       return res.status(400).json({ error: 'No podés eliminar tu propia cuenta.' });
     }

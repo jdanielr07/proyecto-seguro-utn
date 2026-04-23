@@ -12,19 +12,12 @@ const VALID_AUDIT_EVENTS = new Set([
 
 const MAX_AUDIT_LIMIT = 100;
 
-/**
- * GET /api/audit
- * Solo SUPERADMIN puede ver el log (RF-06)
- */
 async function getAll(req, res) {
   try {
-    // Sanitizar y acotar los parámetros de paginación. Sin esto, un atacante
-    // puede volcar toda la tabla con limit=999999 o crashear con page=-1.
     const page  = Math.max(1, parseInt(req.query.page)  || 1);
     const limit = Math.min(MAX_AUDIT_LIMIT, Math.max(1, parseInt(req.query.limit) || 30));
     const skip  = (page - 1) * limit;
 
-    // Whitelist de eventos para evitar filtros arbitrarios.
     const event = VALID_AUDIT_EVENTS.has(req.query.event) ? req.query.event : undefined;
     const where = event ? { event } : {};
 

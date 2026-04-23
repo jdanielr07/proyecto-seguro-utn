@@ -3,22 +3,16 @@
 const jwt = require('jsonwebtoken');
 const { logAuditEvent, getClientIp } = require('./audit.middleware');
 
-/**
- * Verifica el JWT en la cookie HttpOnly (RS-05)
- * NO acepta tokens con algoritmo 'none'
- */
 function requireAuth(req, res, next) {
   try {
-    // Buscar token en cookie HttpOnly (no localStorage - RS-05)
     const token = req.cookies?.token;
 
     if (!token) {
       return res.status(401).json({ error: 'No autenticado. Iniciá sesión.' });
     }
 
-    // Verificar firma - SOLO algoritmos seguros (RS-05: rechazar 'none')
     const decoded = jwt.verify(token, process.env.JWT_SECRET, {
-      algorithms: ['HS256'],   // Lista blanca explícita, 'none' no está
+      algorithms: ['HS256'],
       issuer: 'proyecto-seguro',
     });
 
@@ -32,10 +26,6 @@ function requireAuth(req, res, next) {
   }
 }
 
-/**
- * Factory de middleware para control de acceso por rol (RF-05 / RS-05)
- * Uso: requireRole('SUPERADMIN') o requireRole('SUPERADMIN', 'REGISTRADOR')
- */
 function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.user) {
@@ -43,7 +33,6 @@ function requireRole(...roles) {
     }
 
     if (!roles.includes(req.user.rol)) {
-      // Registrar intento de acceso no autorizado (RF-06)
       logAuditEvent({
         userId: req.user.id,
         event: 'ACCESS_DENIED',

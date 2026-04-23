@@ -1,17 +1,8 @@
-/**
- * api.js - Cliente HTTP centralizado
- * - Todas las peticiones pasan por aquí
- * - Maneja errores 401 (redirige a login)
- * - Sanitiza outputs para prevenir XSS (RS-02)
- */
+'use strict';
 
 const API = (() => {
   const BASE = '/api';
 
-  /**
-   * Escapa HTML para prevenir XSS al insertar texto en el DOM (RS-02)
-   * SIEMPRE usar esta función al mostrar datos del servidor en innerHTML
-   */
   function escapeHtml(str) {
     if (str === null || str === undefined) return '';
     return String(str)
@@ -22,32 +13,29 @@ const API = (() => {
       .replace(/'/g, '&#x27;');
   }
 
-  /**
-   * Petición base - todas las llamadas a la API usan esto
-   */
   async function request(method, path, body = null) {
     const opts = {
       method,
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',   // Enviar cookies HttpOnly automáticamente
+      credentials: 'include',
     };
 
     if (body) opts.body = JSON.stringify(body);
 
     try {
       const res = await fetch(BASE + path, opts);
+      const data = await res.json().catch(() => ({}));
 
-      // Sesión expirada o no autenticado → ir al login
       if (res.status === 401) {
-        window.APP?.showLogin?.();
+        if (!API._redirecting) {
+          API._redirecting = true;
+          window.location.href = '/';
+        }
         return null;
       }
 
-      const data = await res.json().catch(() => ({}));
-
       if (!res.ok) {
-        const msg = data?.error || `Error ${res.status}`;
-        throw new Error(msg);
+        throw new Error(data?.error || `Error ${res.status}`);
       }
 
       return data;
@@ -60,16 +48,15 @@ const API = (() => {
   }
 
   return {
+    _redirecting: false,
     escapeHtml,
 
-    // Auth
     auth: {
       login:  (u, p)  => request('POST', '/auth/login',  { username: u, password: p }),
       logout: ()      => request('POST', '/auth/logout'),
       me:     ()      => request('GET',  '/auth/me'),
     },
 
-    // Productos
     products: {
       getAll:  ()       => request('GET',    '/products'),
       getById: (id)     => request('GET',    `/products/${id}`),
@@ -78,7 +65,6 @@ const API = (() => {
       remove:  (id)     => request('DELETE', `/products/${id}`),
     },
 
-    // Usuarios
     users: {
       getAll:  ()       => request('GET',    '/users'),
       getById: (id)     => request('GET',    `/users/${id}`),
@@ -87,7 +73,6 @@ const API = (() => {
       remove:  (id)     => request('DELETE', `/users/${id}`),
     },
 
-    // Auditoría
     audit: {
       getAll: (page = 1, event = '') =>
         request('GET', `/audit?page=${page}&limit=30${event ? `&event=${event}` : ''}`),

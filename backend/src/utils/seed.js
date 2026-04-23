@@ -9,7 +9,6 @@ const BCRYPT_ROUNDS = 12;
 async function main() {
   console.log('🌱 Iniciando seed de base de datos...');
 
-  // ── Crear SuperAdmin ──────────────────────────────────────────────────────
   const adminHash = await bcrypt.hash('Admin@2026!', BCRYPT_ROUNDS);
   const admin = await prisma.user.upsert({
     where: { username: 'superadmin' },
@@ -23,7 +22,6 @@ async function main() {
   });
   console.log(`✅ SuperAdmin creado: ${admin.username}`);
 
-  // ── Crear Auditor de prueba ───────────────────────────────────────────────
   const auditorHash = await bcrypt.hash('Auditor@2026!', BCRYPT_ROUNDS);
   const auditor = await prisma.user.upsert({
     where: { username: 'auditor1' },
@@ -37,7 +35,6 @@ async function main() {
   });
   console.log(`✅ Auditor creado: ${auditor.username}`);
 
-  // ── Crear Registrador de prueba ───────────────────────────────────────────
   const regHash = await bcrypt.hash('Registrador@2026!', BCRYPT_ROUNDS);
   const registrador = await prisma.user.upsert({
     where: { username: 'registrador1' },
@@ -51,7 +48,6 @@ async function main() {
   });
   console.log(`✅ Registrador creado: ${registrador.username}`);
 
-  // ── Crear productos de prueba ─────────────────────────────────────────────
   const productos = [
     { code: 'PROD-001', name: 'Laptop Dell XPS 15',      description: 'Laptop de alto rendimiento con procesador Intel i7', quantity: 10, price: 1299.99 },
     { code: 'PROD-002', name: 'Monitor LG 27"',          description: 'Monitor IPS 4K con HDR', quantity: 25, price: 449.50 },

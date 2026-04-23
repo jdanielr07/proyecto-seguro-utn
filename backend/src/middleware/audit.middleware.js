@@ -3,9 +3,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-/**
- * Registra un evento de auditoría en la base de datos (RF-06)
- */
 async function logAuditEvent({ userId = null, event, entity = null, entityId = null, detail = null, ipAddress, userAgent = null }) {
   try {
     await prisma.auditLog.create({
@@ -20,14 +17,10 @@ async function logAuditEvent({ userId = null, event, entity = null, entityId = n
       },
     });
   } catch (err) {
-    // No fallar la request si el log falla, solo registrar en consola
     console.error('Error al registrar auditoría:', err.message);
   }
 }
 
-/**
- * Middleware que registra accesos denegados (403) automáticamente
- */
 function auditMiddleware(req, res, next) {
   const originalSend = res.send.bind(res);
 
@@ -47,12 +40,6 @@ function auditMiddleware(req, res, next) {
   next();
 }
 
-/**
- * Obtener IP real del cliente.
- * req.ip es correcto cuando app.set('trust proxy', 1) está configurado:
- * Express toma el último hop agregado por nginx (la IP real del cliente)
- * ignorando cualquier X-Forwarded-For que el atacante haya manipulado.
- */
 function getClientIp(req) {
   return req.ip || req.socket?.remoteAddress || '0.0.0.0';
 }
