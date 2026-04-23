@@ -106,7 +106,7 @@ async function update(req, res) {
       event: 'PRODUCT_UPDATED',
       entity: 'products',
       entityId: id,
-      detail: { changes: req.body },
+      detail: { name: updated.name, quantity: updated.quantity, price: String(updated.price) },
       ipAddress: getClientIp(req),
       userAgent: req.headers['user-agent'],
     });

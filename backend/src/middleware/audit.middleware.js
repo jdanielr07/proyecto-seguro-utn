@@ -48,16 +48,13 @@ function auditMiddleware(req, res, next) {
 }
 
 /**
- * Obtener IP real del cliente (detrás de proxy/ngrok)
+ * Obtener IP real del cliente.
+ * req.ip es correcto cuando app.set('trust proxy', 1) está configurado:
+ * Express toma el último hop agregado por nginx (la IP real del cliente)
+ * ignorando cualquier X-Forwarded-For que el atacante haya manipulado.
  */
 function getClientIp(req) {
-  return (
-    req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-    req.headers['x-real-ip'] ||
-    req.connection?.remoteAddress ||
-    req.ip ||
-    '0.0.0.0'
-  );
+  return req.ip || req.socket?.remoteAddress || '0.0.0.0';
 }
 
 module.exports = { logAuditEvent, auditMiddleware, getClientIp };

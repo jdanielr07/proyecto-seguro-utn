@@ -11,6 +11,11 @@ const MAX_ATTEMPTS = 5;
 const BLOCK_MINUTES = 5;
 const JWT_EXPIRES = '1h';   // RS-05: máximo 1 hora
 
+// Hash válido pre-computado en startup para la comparación timing-safe
+// cuando el usuario no existe. Un hash inválido haría que bcrypt lanzara
+// una excepción, retornando 500 en vez de 401 → enumeración de usuarios.
+const DUMMY_HASH = bcrypt.hashSync('__timing_safe_placeholder__', 12);
+
 /**
  * POST /api/auth/login
  * RS-07: Rate limiting por IP + username
@@ -36,11 +41,10 @@ async function login(req, res) {
 
     // ── 3. Verificar contraseña (timing-safe con bcrypt) ────────────────────
     // IMPORTANTE: siempre hacemos el compare aunque no exista el usuario
-    // para evitar timing attacks que revelen si el usuario existe
-    const dummyHash = '$2b$12$invalidhashtopreventtimingattacks000000000000000000000000';
+    // para evitar timing attacks que revelen si el usuario existe.
     const passwordValid = user
       ? await bcrypt.compare(password, user.passwordHash)
-      : await bcrypt.compare(password, dummyHash);
+      : await bcrypt.compare(password, DUMMY_HASH);
 
     if (!user || !passwordValid || !user.isActive) {
       // Registrar intento fallido (RF-06)

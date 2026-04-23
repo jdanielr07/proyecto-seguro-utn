@@ -4,12 +4,10 @@ Aplicación web segura construida con Node.js + Express + PostgreSQL + Prisma.
 
 ## Equipo
 
-| Nombre | Correo | Rol |
-|--------|--------|-----|
-| (Coordinador) | | Coordinador |
-| | | Integrante |
-| | | Integrante |
-| | | Integrante |
+| Nombre | Rol |
+|--------|-----|
+| Jose David Carvajal |  Coordinador |
+| Daniel Rojas |  Integrante |
 
 ---
 

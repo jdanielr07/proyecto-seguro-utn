@@ -16,8 +16,14 @@ const productRoutes = require('./routes/product.routes');
 const auditRoutes = require('./routes/audit.routes');
 const { errorHandler } = require('./middleware/error.middleware');
 const { auditMiddleware } = require('./middleware/audit.middleware');
+const { requireAuth } = require('./middleware/auth.middleware');
 
 const app = express();
+
+// Confiar solo en el primer proxy (nginx). Permite que req.ip sea la IP real
+// del cliente en lugar de la IP interna de Docker, bloqueando el IP spoofing
+// vía X-Forwarded-For.
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 
 // ─── 1. HEADERS DE SEGURIDAD (RS-06) ──────────────────────────────────────────
@@ -88,9 +94,11 @@ app.use('/api/products', productRoutes);
 app.use('/api/audit',    auditRoutes);
 
 // ─── 8. SWAGGER DOCS (Entregable 5) ────────────────────────────────────────
+// requireAuth protege la documentación: un atacante no puede enumerar
+// endpoints sin haber iniciado sesión primero.
 try {
   const swaggerDocument = YAML.load(path.join(__dirname, '../api_docs/swagger.yaml'));
-  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+  app.use('/api/docs', requireAuth, swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 } catch (e) {
   console.log('Swagger docs not loaded yet');
 }

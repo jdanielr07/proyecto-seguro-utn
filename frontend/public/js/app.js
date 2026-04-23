@@ -126,12 +126,11 @@ window.APP = (() => {
     try {
       const res = await API.auth.login($('username').value, $('password').value);
       if (res) {
-        currentUser = res.user;
-        renderApp();
+        // Reload completo: garantiza DOM limpio sin estado del usuario anterior.
+        window.location.reload();
       }
     } catch (err) {
       showApiError('login-error', err);
-    } finally {
       btn.disabled = false;
       btn.textContent = 'Iniciar Sesión';
     }
@@ -149,10 +148,31 @@ window.APP = (() => {
 
     // Mostrar/ocultar nav según rol (RF-05)
     // IMPORTANTE: esto es solo UX, la seguridad real está en el backend
-    const isAdmin = currentUser.rol === 'SUPERADMIN';
+    const isAdmin   = currentUser.rol === 'SUPERADMIN';
+    const canWrite  = ['SUPERADMIN', 'REGISTRADOR'].includes(currentUser.rol);
     $('nav-users').style.display = '';
     $('nav-audit').style.display = isAdmin ? '' : 'none';
-    $('btn-new-user') && ($('btn-new-user').style.display = isAdmin ? '' : 'none');
+    $('btn-new-user')    && ($('btn-new-user').style.display    = isAdmin  ? '' : 'none');
+    $('btn-new-product') && ($('btn-new-product').style.display = canWrite ? '' : 'none');
+
+    // Limpiar todo el contenido dinámico de la sesión anterior para que
+    // el nuevo usuario nunca vea filas, stats ni logs de otro usuario.
+    $('products-tbody').innerHTML     = '';
+    $('users-tbody').innerHTML        = '';
+    $('audit-tbody').innerHTML        = '';
+    $('audit-pagination').innerHTML   = '';
+    $('recent-logs-table').innerHTML  = '';
+    $('stat-products').textContent    = '–';
+    $('stat-users').textContent       = '–';
+    $('stat-logs').textContent        = '–';
+
+    // Resetear siempre al dashboard al iniciar sesión
+    document.querySelectorAll('.nav-item').forEach(l => l.classList.remove('active'));
+    const dashNav = document.querySelector('.nav-item[data-page="dashboard"]');
+    if (dashNav) dashNav.classList.add('active');
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    $('page-dashboard').classList.add('active');
+    $('page-title').textContent = dashNav ? dashNav.textContent.trim() : 'Dashboard';
 
     loadDashboard();
   }
